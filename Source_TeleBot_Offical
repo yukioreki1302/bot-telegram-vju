@@ -1,4 +1,5 @@
-#Code Offical chạy được
+#Code Chính Thức Chạy Bot Telegram
+#Dev By H.K
 
 import telebot
 import signal
@@ -24,6 +25,7 @@ def create_inline_keyboard():
     inline_keyboard = types.InlineKeyboardMarkup()
     inline_keyboard.add(types.InlineKeyboardButton(text='Thông tin tài khoản', callback_data='account_info'))
     inline_keyboard.add(types.InlineKeyboardButton(text='Nạp tiền', callback_data='nap_tien'))
+    inline_keyboard.add(types.InlineKeyboardButton(text='Chuyển Tiền', callback_data='transfer'))
     inline_keyboard.add(types.InlineKeyboardButton(text='Trợ giúp', callback_data='help'))
     return inline_keyboard
 
@@ -36,8 +38,10 @@ def handle_callback(call):
         send_account_info(call.message)
     elif call.data == 'nap_tien':
         handle_topup(call.message)
+    #elif call.data == 'transfer':
+   #     send_transfer(call.message)
     elif call.data == 'help':
-        send_help(call.message)
+        send_help(call.message)    
     bot.answer_callback_query(callback_query_id=call.id)
     #bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=None)
 
@@ -60,7 +64,8 @@ def send_account_info(message):
     username = message.chat.username
     first_name = message.chat.first_name
     last_name = message.chat.last_name
-    bot.send_message(chat_id, f"Username: {username}\nFirst name: {first_name}\nLast name: {last_name}\nSố dư tài khoản: {account_balance}")
+    formatted_balance = "{:,.0f}".format(account_balance).replace(",", " ")
+    bot.send_message(chat_id, f"Username: {username}\nFirst name: {first_name}\nLast name: {last_name}\nSố dư tài khoản: {formatted_balance} VNĐ")
 
 # xử lý lệnh nạp tiền
 @bot.message_handler(commands=['nap_tien'])
@@ -74,17 +79,17 @@ def handle_topup(message):
 def process_topup(message):
     chat_id = message.chat.id
     try:
-        # lấy số tiền người dùng nhập và cộng vào số dư tài khoản
         amount = float(message.text)
-        global account_balance
-        account_balance += amount
-        # định dạng số tiền thành chuỗi theo định dạng số nguyên và chèn khoảng trắng giữa các số hàng nghìn
-        formatted_amount = "{:,.0f}".format(amount).replace(",", " ") # định dạng số tiền
-        formatted_balance = "{:,.0f}".format(account_balance).replace(",", " ") # định dạng số dư
-        # gửi thông báo số dư mới cho người dùng
-        bot.send_message(chat_id, f"Bạn đã nạp thành công: {formatted_amount} VND. Số dư hiện tại của bạn là: {formatted_balance} VND.")
+        if amount <= 0:  # kiểm tra nếu số tiền nhập vào không lớn hơn 0
+            bot.send_message(chat_id, "Đéo ai nạp tiền âm. Nạp lại đi")
+        else:
+            global account_balance
+            account_balance += amount
+            formatted_amount = "{:,.0f}".format(amount).replace(",", " ")
+            formatted_balance = "{:,.0f}".format(account_balance).replace(",", " ")
+            bot.send_message(chat_id, f"Bạn đã nạp thành công: {formatted_amount} VND. Số dư hiện tại của bạn là: {formatted_balance} VND.")
     except ValueError:
-        bot.send_message(chat_id, "Số tiền đéo hợp lệ. Ấn lại lệnh để nhập lại thg ngu.")
+        bot.send_message(chat_id, "Số tiền không hợp lệ. Vui lòng nhập lại.")
 
 # xử lý tất cả các tin nhắn khác
 @bot.message_handler(func=lambda message: True)
