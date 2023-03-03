@@ -1,0 +1,107 @@
+#Code Offical chạy được
+
+import telebot
+import signal
+import sys
+from telebot import types
+
+# Kích hoạt Bot = TOKEN. Có thể kích hoạt nhiều BOT bằng cách spam nhiều lệnh bot = telebot.TeleBot("ID BOT")
+bot = telebot.TeleBot("5874068278:AAGSj2MiMWflpZ6bTjEMZO3AkJkHDymw-F4")
+
+# khởi tạo biến toàn cục để lưu số dư của tài khoản
+account_balance = 0
+
+# Kiểm tra kết nối VS CODE -> telegram bằng cách gửi tin nhắn thông báo của Bot tới ID người dùng
+user_ids = ["5578865090"]
+
+message = "Xin chào, tôi là Chatbot của Hoàng Tiến Trung Kiên! Hãy chat lệnh: /start để bắt đầu"
+for user_id in user_ids:
+    bot.send_message(user_id, message)
+print("Đã gửi tin nhắn thành công!")
+
+# tạo nút lệnh Inline Keyboard cho các lệnh help, account_info và nap_tien
+def create_inline_keyboard():
+    inline_keyboard = types.InlineKeyboardMarkup()
+    inline_keyboard.add(types.InlineKeyboardButton(text='Thông tin tài khoản', callback_data='account_info'))
+    inline_keyboard.add(types.InlineKeyboardButton(text='Nạp tiền', callback_data='nap_tien'))
+    inline_keyboard.add(types.InlineKeyboardButton(text='Trợ giúp', callback_data='help'))
+    return inline_keyboard
+
+# xử lý callback từ nút Inline Keyboard
+@bot.callback_query_handler(func=lambda call: True)
+def handle_callback(call):
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
+    if call.data == 'account_info':
+        send_account_info(call.message)
+    elif call.data == 'nap_tien':
+        handle_topup(call.message)
+    elif call.data == 'help':
+        send_help(call.message)
+    bot.answer_callback_query(callback_query_id=call.id)
+    #bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=None)
+
+
+# xử lý lệnh /start
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    bot.reply_to(message, "Xin chào, đây là B.O.T của Hoàng Kiên!"
+                          "Vui lòng chọn các lệnh bên dưới mà Bot có thể thực hiện:", reply_markup=create_inline_keyboard()) 
+
+# xử lý lệnh /help
+@bot.message_handler(commands=['help'])
+def send_help(message):
+    bot.reply_to(message, "deo co tro giup")
+
+# xử lý tài khoản    
+@bot.message_handler(commands=['account_info'])
+def send_account_info(message):
+    chat_id = message.chat.id
+    username = message.chat.username
+    first_name = message.chat.first_name
+    last_name = message.chat.last_name
+    bot.send_message(chat_id, f"Username: {username}\nFirst name: {first_name}\nLast name: {last_name}\nSố dư tài khoản: {account_balance}")
+
+# xử lý lệnh nạp tiền
+@bot.message_handler(commands=['nap_tien'])
+def handle_topup(message):
+    chat_id = message.chat.id
+    # yêu cầu người dùng nhập số tiền nạp
+    bot.send_message(chat_id, "Vui lòng nhập số tiền nạp:")
+    # chuyển sang trạng thái chờ nhập số tiền nạp
+    bot.register_next_step_handler(message, process_topup)
+
+def process_topup(message):
+    chat_id = message.chat.id
+    try:
+        # lấy số tiền người dùng nhập và cộng vào số dư tài khoản
+        amount = float(message.text)
+        global account_balance
+        account_balance += amount
+        # định dạng số tiền thành chuỗi theo định dạng số nguyên và chèn khoảng trắng giữa các số hàng nghìn
+        formatted_amount = "{:,.0f}".format(amount).replace(",", " ") # định dạng số tiền
+        formatted_balance = "{:,.0f}".format(account_balance).replace(",", " ") # định dạng số dư
+        # gửi thông báo số dư mới cho người dùng
+        bot.send_message(chat_id, f"Bạn đã nạp thành công: {formatted_amount} VND. Số dư hiện tại của bạn là: {formatted_balance} VND.")
+    except ValueError:
+        bot.send_message(chat_id, "Số tiền đéo hợp lệ. Ấn lại lệnh để nhập lại thg ngu.")
+
+# xử lý tất cả các tin nhắn khác
+@bot.message_handler(func=lambda message: True)
+def echo_all(message):
+    bot.reply_to(message, message.text)
+
+def stop_bot(signal, frame):
+    print('Stopping bot')
+    sys.exit(0)
+
+# xử lý tín hiệu bàn phím để dừng bot
+signal.signal(signal.SIGINT, stop_bot)
+
+# chạy bot liên tục
+while True:
+    try:
+        bot.polling(none_stop=True)
+    except Exception as e:
+        print(e)
+        bot.stop_polling()
