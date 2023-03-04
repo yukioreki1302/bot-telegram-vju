@@ -5,12 +5,17 @@ import telebot
 import signal
 import sys
 from telebot import types
+import random
 
 # Kích hoạt Bot = TOKEN. Có thể kích hoạt nhiều BOT bằng cách spam nhiều lệnh bot = telebot.TeleBot("ID BOT")
 bot = telebot.TeleBot("5874068278:AAGSj2MiMWflpZ6bTjEMZO3AkJkHDymw-F4")
 
 # khởi tạo biến toàn cục để lưu số dư của tài khoản
 account_balance = 0
+
+# lưu mã xác nhận vào biến global
+global confirmation_code
+confirmation_code = None
 
 # Kiểm tra kết nối VS CODE -> telegram bằng cách gửi tin nhắn thông báo của Bot tới ID người dùng
 user_ids = ["5578865090"]
@@ -71,10 +76,30 @@ def send_account_info(message):
 @bot.message_handler(commands=['nap_tien'])
 def handle_topup(message):
     chat_id = message.chat.id
-    # yêu cầu người dùng nhập số tiền nạp
-    bot.send_message(chat_id, "Vui lòng nhập số tiền nạp:")
-    # chuyển sang trạng thái chờ nhập số tiền nạp
-    bot.register_next_step_handler(message, process_topup)
+    # tạo mã xác nhận ngẫu nhiên
+    global confirmation_code
+    confirmation_code = random.randint(1000, 9999)
+    # yêu cầu người dùng nhập mã xác nhận
+    bot.send_message(chat_id, f"Vui lòng nhập mã xác nhận sau: {confirmation_code}")
+    # chuyển sang trạng thái chờ nhập mã xác nhận
+    bot.register_next_step_handler(message, process_confirm_topup)
+
+def process_confirm_topup(message):
+    chat_id = message.chat.id
+    try:
+        # lấy mã xác nhận người dùng nhập và kiểm tra
+        confirm_code = int(message.text)
+        global confirmation_code
+        if confirm_code == confirmation_code:
+            # nếu mã xác nhận đúng thì tiếp tục quá trình nạp tiền
+            bot.send_message(chat_id, "Mã xác nhận chính xác, vui lòng nhập số tiền nạp:")
+            # chuyển sang trạng thái chờ nhập số tiền nạp
+            bot.register_next_step_handler(message, process_topup)
+        else:
+            # nếu mã xác nhận sai thì yêu cầu nhập lại
+            bot.send_message(chat_id, "Mã xác nhận không chính xác. Vui lòng thử lại.")
+    except ValueError:
+        bot.send_message(chat_id, "Mã xác nhận không hợp lệ. Vui lòng thử lại.")
 
 def process_topup(message):
     chat_id = message.chat.id
