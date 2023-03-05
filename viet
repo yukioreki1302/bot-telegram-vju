@@ -1,27 +1,140 @@
-import telegram
+import logging
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import sqlite3
 
-# Replace YOUR_TOKEN with your bot's token
-bot = telegram.Bot(token='')
+# Set up logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-def start(update, context):
-    user = update.message.from_user
-    
-    # Save the user's information to the database
-    conn = sqlite3.connect('account.db')
-    c = conn.cursor()
-    c.execute("INSERT INTO accounts (first_name, last_name, username, chat_id) VALUES (?, ?, ?, ?)",
-              (user.first_name,user.last_name,user.username,user.id))
+# Initialize the bot with your Telegram bot token
+updater = Updater(token='YOUR_BOT_TOKEN', use_context=True)
+
+# Set up a dispatcher to handle incoming updates
+dispatcher = updater.dispatcher
+
+def start(update: Update, context: CallbackContext) -> None:
+    # Create a new user in the database
+    user_id = update.message.chat_id
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO users (user_id, balance) VALUES (?, ?)", (user_id, 0))
     conn.commit()
     conn.close()
     
-    update.message.reply_text('Hello,{}! Your account information has been saved. '.format(user.first_name))
-    
-# Create a Telegram updater and add the start command handler
-updater = telegram.Updater(token='',use_context=True)
-updater.dispatcher.add_handler(telegram.CommandHandler('start',start))
+    # Send a welcome message
+    update.message.reply_text('Welcome to the bot! Your account has been created.')
 
+def topup(update: Update, context: CallbackContext) -> None:
+    # Get the amount to top up from the user's message
+    amount = float(context.args[0])
+    
+    # Update the user's balance in the database
+    user_id = update.message.chat_id
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
+    conn.commit()
+    conn.close()
+    
+    # Send a confirmation message
+    update.message.reply_text(f'Your account has been topped up with {amount}. Your new balance is {get_balance(user_id)}')
+
+
+def transfer(update: Update, context: CallbackContext) -> None:
+    # Get the recipient and amount from the user's message
+    recipient_id = int(context.args[0])
+    amount = float(context.args[1])
+    
+    # Get the sender's user_id
+    sender_id = update.message.chat_id
+    
+    # Check if the sender has enough balance
+    sender_balance = get_balance(sender_id)
+    if sender_balance < amount:
+        update.message.reply_text('You do not have enough balance to make this transfer.')
+        return
+    
+    # Transfer the amount from the sender to the recipient
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, sender_id))
+    cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, recipient_id))
+    conn.commit()
+    conn.close()
+    
+    # Send a confirmation message
+    update.message.reply_text(f'{amount} has been transferred to {recipient_id}. Your new balance is {get_balance(sender_id)}')
+
+def payment(update: Update, context: CallbackContext) -> None:
+    # Get the amount to pay from the user's message
+    amount = float(context.args[0])
+    
+    # Check if the user has enough balance
+        user_id = update.message.chat_id
+    user_balance = get_balance(user_id)
+    if user_balance < amount:
+        update.message.reply_text('You do not have enough balance to make this payment.')
+        return
+    
+    # Deduct the amount from the user's balance
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
+    conn.commit()
+    conn.close()
+    
+    # Send a confirmation message
+    update.message.reply_text(f'{amount} has been deducted from your account. Your new balance is {get_balance(user_id)}')
+
+def history(update: Update, context: CallbackContext) -> None:
+    # Get the user's transaction history from the database
+    user_id = update.message.chat_id
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM transactions WHERE sender_id = ? OR recipient_id = ?", (user_id, user_id))
+    rows = cursor.fetchall()
+    conn.close()
+    
+    # Send the transaction history as a message
+    message = ''
+    for row in rows:
+        if row[1] == user_id:
+            message += f'{row[3]} sent to {row[2]} on {row[4]}\n'
+        else:
+            message += f'{row[3]} received from {row[1]} on {row[4]}\n'
+    if message == '':
+        message = 'You have no transaction history.'
+    update.message.reply_text(message)
+
+   def balance(update: Update, context: CallbackContext) -> None:
+    # Get the user's balance from the database
+    user_id = update.message.chat_id
+    balance = get_balance(user_id)
+    
+    # Send the user's balance as a message
+    update.message.reply_text(f'Your balance is {balance}.')
+    
+def get_balance(user_id: int) -> float:
+    # Get the user's balance from the database
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    if result is None:
+        return 0
+    else:
+        return result[0]
+
+# Set up command handlers
+dispatcher.add_handler(CommandHandler('start', start))
+dispatcher.add_handler(CommandHandler('topup', topup))
+dispatcher.add_handler(CommandHandler('transfer', transfer))
+dispatcher.add_handler(CommandHandler('payment', payment))
+dispatcher.add_handler(CommandHandler('history', history))
+dispatcher.add_handler(CommandHandler('balance', balance))
 
 # Start the bot
 updater.start_polling()
 updater.idle()
+
