@@ -1,1 +1,27 @@
+import telegram
+import sqlite3
 
+# Replace YOUR_TOKEN with your bot's token
+bot = telegram.Bot(token='')
+
+def start(update, context):
+    user = update.message.from_user
+    
+    # Save the user's information to the database
+    conn = sqlite3.connect('account.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO accounts (first_name, last_name, username, chat_id) VALUES (?, ?, ?, ?)",
+              (user.first_name,user.last_name,user.username,user.id))
+    conn.commit()
+    conn.close()
+    
+    update.message.reply_text('Hello,{}! Your account information has been saved. '.format(user.first_name))
+    
+# Create a Telegram updater and add the start command handler
+updater = telegram.Updater(token='',use_context=True)
+updater.dispatcher.add_handler(telegram.CommandHandler('start',start))
+
+
+# Start the bot
+updater.start_polling()
+updater.idle()
