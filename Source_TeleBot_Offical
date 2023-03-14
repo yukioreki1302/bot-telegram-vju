@@ -9,8 +9,7 @@ from telebot import types
 import random
 
 # Enable Bot = TOKEN. Multiple BOTs can be activated by spamming multiple bot commands = telebot.TeleBot("BOT ID")
-bot = telebot.TeleBot("6146350317:AAE4sObPnDLzrEUd7_8dIfv_b6lrdJ--oyA") # Bot by H.K
-bot = telebot.TeleBot("5874068278:AAGSj2MiMWflpZ6bTjEMZO3AkJkHDymw-F4") # Bot by C.T.V
+bot = telebot.TeleBot("6146350317:AAE4sObPnDLzrEUd7_8dIfv_b6lrdJ--oyA")
 
 # Initialize a global variable to store the account's balance
 account_balance = 0
@@ -27,14 +26,25 @@ for user_id in user_ids:
     bot.send_message(user_id, message)
 print("Đã gửi tin nhắn thành công!")
 
-# Create Inline Keyboard command buttons for help, account_info and topup commands
+# Create Inline Keyboard effect buttons and column dividers like https://t.me/wallet
+# def create_inline_keyboard(): Make Inline Keyboard effect buttons in a vertical line
+#     inline_keyboard = types.InlineKeyboardMarkup()
+#     inline_keyboard.add(types.InlineKeyboardButton(text='Thông tin tài khoản', callback_data='account_info'))
+#     inline_keyboard.add(types.InlineKeyboardButton(text='Nạp tiền', callback_data='topup'))
+#     inline_keyboard.add(types.InlineKeyboardButton(text='Chuyển Tiền', callback_data='transfer'))
+#     inline_keyboard.add(types.InlineKeyboardButton(text='Lịch Sử Chuyển Tiền', callback_data='transfer'))
+#     inline_keyboard.add(types.InlineKeyboardButton(text='Trợ giúp', callback_data='help'))
+#     return inline_keyboard
 def create_inline_keyboard():
     inline_keyboard = types.InlineKeyboardMarkup()
-    inline_keyboard.add(types.InlineKeyboardButton(text='Thông tin tài khoản', callback_data='account_info'))
-    inline_keyboard.add(types.InlineKeyboardButton(text='Nạp tiền', callback_data='topup'))
-    inline_keyboard.add(types.InlineKeyboardButton(text='Chuyển Tiền', callback_data='transfer'))
-    inline_keyboard.add(types.InlineKeyboardButton(text='Lịch Sử Chuyển Tiền', callback_data='transfer'))
-    inline_keyboard.add(types.InlineKeyboardButton(text='Trợ giúp', callback_data='help'))
+    row1 = [types.InlineKeyboardButton(text='Thông tin tài khoản', callback_data='account_info'),
+            types.InlineKeyboardButton(text='Nạp tiền', callback_data='topup')]
+    row2 = [types.InlineKeyboardButton(text='Chuyển Tiền', callback_data='transfer'),
+            types.InlineKeyboardButton(text='Lịch Sử Chuyển Tiền', callback_data='transfer')]
+    row3 = [types.InlineKeyboardButton(text='Trợ giúp', callback_data='help')]
+    inline_keyboard.row(*row1)
+    inline_keyboard.row(*row2)
+    inline_keyboard.row(*row3)
     return inline_keyboard
 
 # Handle callback from Inline Keyboard button
