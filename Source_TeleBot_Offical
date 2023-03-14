@@ -1,4 +1,5 @@
 #Code Chính Thức Chạy Bot Telegram
+#The code runs fine without errors on H.K server
 #Dev By H.K
 
 import telebot
