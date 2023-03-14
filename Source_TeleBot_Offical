@@ -7,17 +7,18 @@ import sys
 from telebot import types
 import random
 
-# Kích hoạt Bot = TOKEN. Có thể kích hoạt nhiều BOT bằng cách spam nhiều lệnh bot = telebot.TeleBot("ID BOT")
-bot = telebot.TeleBot("5874068278:AAGSj2MiMWflpZ6bTjEMZO3AkJkHDymw-F4")
+# Enable Bot = TOKEN. Multiple BOTs can be activated by spamming multiple bot commands = telebot.TeleBot("BOT ID")
+bot = telebot.TeleBot("6146350317:AAE4sObPnDLzrEUd7_8dIfv_b6lrdJ--oyA") # Bot by H.K
+bot = telebot.TeleBot("5874068278:AAGSj2MiMWflpZ6bTjEMZO3AkJkHDymw-F4") # Bot by C.T.V
 
-# khởi tạo biến toàn cục để lưu số dư của tài khoản
+# Initialize a global variable to store the account's balance
 account_balance = 0
 
-# lưu mã xác nhận vào biến global
+# Save the OTP in the global variable
 global confirmation_code
 confirmation_code = None
 
-# Kiểm tra kết nối VS CODE -> telegram bằng cách gửi tin nhắn thông báo của Bot tới ID người dùng
+# Check VS CODE -> telegram connection by sending Bot notification message to user ID
 user_ids = ["5578865090"]
 
 message = "Xin chào, tôi là Chatbot của Hoàng Tiến Trung Kiên! Hãy chat lệnh: /start để bắt đầu"
@@ -25,23 +26,24 @@ for user_id in user_ids:
     bot.send_message(user_id, message)
 print("Đã gửi tin nhắn thành công!")
 
-# tạo nút lệnh Inline Keyboard cho các lệnh help, account_info và nap_tien
+# Create Inline Keyboard command buttons for help, account_info and topup commands
 def create_inline_keyboard():
     inline_keyboard = types.InlineKeyboardMarkup()
     inline_keyboard.add(types.InlineKeyboardButton(text='Thông tin tài khoản', callback_data='account_info'))
-    inline_keyboard.add(types.InlineKeyboardButton(text='Nạp tiền', callback_data='nap_tien'))
+    inline_keyboard.add(types.InlineKeyboardButton(text='Nạp tiền', callback_data='topup'))
     inline_keyboard.add(types.InlineKeyboardButton(text='Chuyển Tiền', callback_data='transfer'))
+    inline_keyboard.add(types.InlineKeyboardButton(text='Lịch Sử Chuyển Tiền', callback_data='transfer'))
     inline_keyboard.add(types.InlineKeyboardButton(text='Trợ giúp', callback_data='help'))
     return inline_keyboard
 
-# xử lý callback từ nút Inline Keyboard
+# Handle callback from Inline Keyboard button
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
     chat_id = call.message.chat.id
     message_id = call.message.message_id
     if call.data == 'account_info':
         send_account_info(call.message)
-    elif call.data == 'nap_tien':
+    elif call.data == 'topup':
         handle_topup(call.message)
     #elif call.data == 'transfer':
    #     send_transfer(call.message)
@@ -51,18 +53,18 @@ def handle_callback(call):
     #bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=None)
 
 
-# xử lý lệnh /start
+# Command /start 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.reply_to(message, "Xin chào, đây là B.O.T của Hoàng Kiên!"
                           "Vui lòng chọn các lệnh bên dưới mà Bot có thể thực hiện:", reply_markup=create_inline_keyboard()) 
 
-# xử lý lệnh /help
+# Command /help
 @bot.message_handler(commands=['help'])
 def send_help(message):
     bot.reply_to(message, "deo co tro giup")
 
-# xử lý tài khoản    
+# Command /account_info   
 @bot.message_handler(commands=['account_info'])
 def send_account_info(message):
     chat_id = message.chat.id
@@ -72,40 +74,40 @@ def send_account_info(message):
     formatted_balance = "{:,.0f}".format(account_balance).replace(",", " ")
     bot.send_message(chat_id, f"Username: {username}\nFirst name: {first_name}\nLast name: {last_name}\nSố dư tài khoản: {formatted_balance} VNĐ")
 
-# xử lý lệnh nạp tiền
-@bot.message_handler(commands=['nap_tien'])
+# Command /topup
+@bot.message_handler(commands=['topup'])
 def handle_topup(message):
     chat_id = message.chat.id
-    # tạo mã xác nhận ngẫu nhiên
+    # Generate random confirmation OTP code
     global confirmation_code
     confirmation_code = random.randint(1000, 9999)
-    # yêu cầu người dùng nhập mã xác nhận
+    # Require the user to enter a confirmation code
     bot.send_message(chat_id, f"Vui lòng nhập mã xác nhận sau: {confirmation_code}")
-    # chuyển sang trạng thái chờ nhập mã xác nhận
+    # Switch to waiting state to enter confirmation code
     bot.register_next_step_handler(message, process_confirm_topup)
 
 def process_confirm_topup(message):
     chat_id = message.chat.id
     try:
-        # lấy mã xác nhận người dùng nhập và kiểm tra
+        # Get the user-entered confirmation code and check
         confirm_code = int(message.text)
         global confirmation_code
         if confirm_code == confirmation_code:
-            # nếu mã xác nhận đúng thì tiếp tục quá trình nạp tiền
+            # If the verification code is correct, continue with the deposit process
             bot.send_message(chat_id, "Mã xác nhận chính xác, vui lòng nhập số tiền nạp:")
-            # chuyển sang trạng thái chờ nhập số tiền nạp
+            # Switch to waiting state to enter the deposit amount
             bot.register_next_step_handler(message, process_topup)
         else:
-            # nếu mã xác nhận sai thì yêu cầu nhập lại
+            # If the confirmation code is wrong, ask to re-enter it
             bot.send_message(chat_id, "Mã xác nhận không chính xác. Vui lòng thử lại.")
     except ValueError:
-        bot.send_message(chat_id, "Mã xác nhận không hợp lệ. Vui lòng thử lại.")
+        bot.send_message(chat_id, "Nhập cái mã cũng sai?. Nhập lại đi.")
 
 def process_topup(message):
     chat_id = message.chat.id
     try:
         amount = float(message.text)
-        if amount <= 0:  # kiểm tra nếu số tiền nhập vào không lớn hơn 0
+        if amount <= 0:  # Check if the amount entered is not greater than 0
             bot.send_message(chat_id, "Đéo ai nạp tiền âm. Nạp lại đi")
         else:
             global account_balance
@@ -116,7 +118,7 @@ def process_topup(message):
     except ValueError:
         bot.send_message(chat_id, "Số tiền không hợp lệ. Vui lòng nhập lại.")
 
-# xử lý tất cả các tin nhắn khác
+# Handle all other messages
 @bot.message_handler(func=lambda message: True)
 def echo_all(message):
     bot.reply_to(message, message.text)
@@ -125,13 +127,15 @@ def stop_bot(signal, frame):
     print('Stopping bot')
     sys.exit(0)
 
-# xử lý tín hiệu bàn phím để dừng bot
+# Handle keyboard signals to stop bots
 signal.signal(signal.SIGINT, stop_bot)
 
-# chạy bot liên tục
+# Run bot continuously
 while True:
     try:
         bot.polling(none_stop=True)
     except Exception as e:
         print(e)
         bot.stop_polling()
+
+
